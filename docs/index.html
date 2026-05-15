@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chipra FM</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header id="logo">
+        <img src="_static/chipra-fm.png" />
+    </header>
+
+    <h1 id="title" >Chipra FM 1.0MHz</h1>
+
+    <section id="sint-info" >
+        <input oninput="setCarrier(this.value)" type="range" id="freq" name="freq" step="500" min="500" max="500000">
+        <div id="station-markers" ></div>
+    </section>
+
+    <p id="please-touch-me" >Presione pa prender la radio.</p>
+
+    <main>
+        <strong>POR FAVOR, No use audifonos.</strong> Esta página simula la experiencia completa de fingir escuchar la radio.
+        La música se modula en ondas de radio y viaja por un pequeño espectro inventado.
+        Al final una radio imaginaria y bien peye la sintoniza y decodifica en tiempo real, todo en el navegador.
+
+        </br>
+        </br>
+
+        Pélelo, esto es arte hptas.
+    </main>
+
+    <style>
+        #title {
+            text-align: center;
+        }
+
+        #logo {
+            display: flex;
+            justify-content: center;
+            align-content: center;
+            margin-top: 50px;
+        }
+
+        #logo img {
+            margin: auto;
+        }
+
+        #sint-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #freq {
+            width: 100%;
+            max-width: 500px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        #freq::-webkit-slider-runnable-track {
+            height: 4px;
+            background: rgb(255, 145, 42);
+            border-radius: 4px;
+        }
+
+        #freq::-moz-range-track {
+            height: 4px;
+            background: rgb(255, 145, 42);
+            border-radius: 4px;
+        }
+
+        #station-markers {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        #station-markers div {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            justify-content: start;
+        }
+
+        #station-markers div p {
+            margin: 0px;
+        }
+
+        #station-markers div > .st-name {
+            font-size: 0.6em;
+            text-align: center;
+            width: 50px;
+        }
+
+        #station-markers div > .st-freq {
+            font-weight: bolder;
+        }
+
+        main {
+            margin: auto;
+            margin-top: 30px;
+            font-size: small;
+            width: 50%;
+        }
+
+        @media (max-width: 1080px) {
+            main {
+                width: 70%;
+            }
+        }
+
+        @media (max-width: 720px) {
+            main {
+                width: 80%;
+            }
+        }
+
+        #please-touch-me {
+            background-color: red;
+            color: white;
+            text-align: center;
+            width: 300px;
+            margin: auto;
+        }
+    </style>
+
+    <script>
+        class Station {
+            constructor(track, carrier_frequency, band_width, name) {
+                this.carrierFreq = carrier_frequency;
+                this.bandWidth = band_width;
+                this.track = track;
+                this.name = name;
+                this.timeCounter = 0;
+            }
+
+            FM_modulate(dst)
+            {
+                let num_samples = Math.floor(AUDIO_SAMPLERATE * CHUNK_DURATION_S);
+                let i = 0;
+                while (num_samples > 0)
+                {
+                    if (this.timeCounter >= this.track.length)
+                    {
+                        this.timeCounter = 0;
+                    }
+                    else if (this.timeCounter + num_samples < this.track.length)
+                    {
+                        AUDSCRATCH_buffer.set(
+                            this.track.subarray(this.timeCounter, this.timeCounter + num_samples), 
+                            i);
+                        this.timeCounter += num_samples
+                        num_samples = 0;
+                    }
+                    else
+                    {
+                        let samples = this.track.length - this.timeCounter;
+
+                        AUDSCRATCH_buffer.set(
+                            this.track.subarray(this.timeCounter, this.timeCounter + samples), 
+                            i);
+                        i += samples;
+                        num_samples -= samples;
+                        this.timeCounter = 0;
+                    }
+                    this.timeCounter %= this.track.length;
+                }
+                FM.instance.exports.FM_modulate(this.carrierFreq, this.bandWidth);
+            }
+        }
+
+        let soundCtxStarted = false;
+        let ctx = undefined;
+        let stations = undefined;
+        let FM_buffer = undefined;
+        let AUDSCRATCH_buffer = undefined;
+        let I = undefined;
+        let Q = undefined;
+        let AUDIO_buffer = undefined;
+        // Propose default station songs
+        const DEFAULT_STATIONS = {
+            "Cortavenas Caldas": "_static/tracks/que-pasara-los-betas.mp3",
+            "Yerevani Radion": "_static/tracks/sevuk-sirunik-aghjik.mp3",
+            "Milky Chocobo FM": "_static/tracks/mario-artist-talent-studio-arriba.mp3",
+            "Armonía Estereo": "_static/tracks/el-silbon.mp3",
+            "Chipra System Private Band": "_static/tracks/chipra.mp3",
+        };
+        const NUM_SWAP_BUFFERS = 3;
+        let FM_MAX_MHZ = undefined;
+        let AUDIO_SAMPLERATE = undefined;
+        let FM_SAMPLERATE = undefined;
+        let CHUNK_DURATION_MS = undefined;
+        let CHUNK_DURATION_S = undefined;
+        let SCHEDULE_AHEAD_MS = undefined;
+
+        let nextAudioStartTime = 0;
+        let currentAudioBuffer = 0;
+
+        let radioCarrierFreq = 62_500;
+        let radioVolume = 50_000;
+
+        let FM = undefined;
+        const FM_importObject = {
+            env: {
+                js_sin: Math.sin,
+                js_cos: Math.cos,
+                js_sqrt: Math.sqrt,
+                js_pow: Math.pow,
+                js_abs: Math.abs,
+                js_atan2: Math.atan2
+            }
+        };
+
+        function setCarrier(X)
+        {
+            radioCarrierFreq = X;
+            document.getElementById("freq").value = radioCarrierFreq;
+        }
+
+        function floatToInt16(samples) {
+            const out = new Int16Array(samples.length);
+            for (let i = 0; i < samples.length; i++) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                out[i] = s < 0 ? s * 32768 : s * 32767;
+            }
+            return out;
+        }
+
+        function downloadRaw(samples, filename = "audio.raw") {
+            const int16 = floatToInt16(samples);
+            const blob = new Blob([int16.buffer], {
+                type: "application/octet-stream"
+            });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function enqueueNextChunk()
+        {
+            // Modulate all stations into the spectrum
+            FM_buffer.fill(0);
+            for (const station of stations)
+            {
+                station.FM_modulate(FM_buffer);
+            }
+            // Decode selected frequency
+            FM.instance.exports.FM_demod(radioCarrierFreq);
+            // Increase buffer counter
+            currentAudioBuffer = (currentAudioBuffer + 1) % NUM_SWAP_BUFFERS;
+            // Copy buffer to webaudio
+            const buffer = ctx.createBuffer(1, AUDIO_buffer.length, AUDIO_SAMPLERATE);
+            buffer.copyToChannel(AUDIO_buffer, 0);
+            // Initsource
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            // Schedule
+            if (nextAudioStartTime < ctx.currentTime) 
+            {
+                nextAudioStartTime = ctx.currentTime;
+            }
+            source.start(nextAudioStartTime);
+            nextAudioStartTime += buffer.duration;
+        }
+
+        function processingLoop() {
+            // Keep enqueuing as long as the queue isn't full enough
+            while (nextAudioStartTime < ctx.currentTime + SCHEDULE_AHEAD_MS / 1000) {
+                enqueueNextChunk();
+            }
+            // Schedule next check
+            setTimeout(processingLoop, SCHEDULE_AHEAD_MS / 2);
+        }
+
+        document.addEventListener("DOMContentLoaded", async function(event)
+        {
+            // Load FM module
+            const wasm = await (await fetch("_static/fm.wasm")).arrayBuffer();
+            FM = await WebAssembly.instantiate(wasm, FM_importObject);
+            // Init vars
+            FM_MAX_MHZ = FM.instance.exports.getMaxMHz();
+            AUDIO_SAMPLERATE = FM.instance.exports.getAUDSamplerate();
+            FM_SAMPLERATE = FM.instance.exports.getFMSamplerate();
+            CHUNK_DURATION_MS = FM.instance.exports.getChunkMS();
+            CHUNK_DURATION_S = FM.instance.exports.getChunkS();
+            SCHEDULE_AHEAD_MS = CHUNK_DURATION_MS * 0.75;
+            document.getElementById("freq").max = FM_SAMPLERATE / 2;
+            setCarrier(radioCarrierFreq);
+            ctx = new AudioContext();
+            ctx.currentTime
+            stations = [];
+            // Load station tracks and assign bands
+            let nstations = Object.keys(DEFAULT_STATIONS).length;
+            let FM_maxFreq = FM_SAMPLERATE / 2;
+            let bandWidth = FM_maxFreq / nstations;
+            let carrier = bandWidth / 2;
+            for (const [name, song] of Object.entries(DEFAULT_STATIONS))
+            {
+                const response = await fetch(song);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                const leftChannel = audioBuffer.getChannelData(0);
+                stations.push(new Station(leftChannel, carrier, bandWidth, name));
+                carrier += bandWidth;
+            }
+            document.getElementById("station-markers").innerHTML = stations.map(s => `<div><p class="st-name" >${s.name}</p><p class="st-freq" >${s.carrierFreq/1000}㎑</p></div>`).join("\n");
+        })
+
+        document.addEventListener("click", async function(event)
+        {
+            if (soundCtxStarted)
+            {
+                return;
+            }
+            // Start context
+            soundCtxStarted = true;
+            ctx.resume();
+            nextAudioStartTime = ctx.currentTime;
+            // Change document
+            document.getElementById("please-touch-me").remove();
+            // Init buffers from the FM module
+            AUDSCRATCH_buffer = new Float32Array(
+                FM.instance.exports.memory.buffer,
+                FM.instance.exports.getAudioScratchBufPtr(),
+                FM.instance.exports.getAudioBufLength());
+            FM_buffer = new Float32Array(
+                FM.instance.exports.memory.buffer,
+                FM.instance.exports.getFMBufPtr(),
+                FM.instance.exports.getFMBufLength());
+            AUDIO_buffer = new Float32Array(
+                FM.instance.exports.memory.buffer,
+                FM.instance.exports.getAudioBufPtr(),
+                FM.instance.exports.getAudioBufLength());
+            I = new Float32Array(FM_buffer.length);
+            Q = new Float32Array(FM_buffer.length);
+            // Start enqueuer
+            processingLoop();
+        })
+    </script>
+</body>
+</html>
