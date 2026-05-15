@@ -194,7 +194,6 @@
             "Chipra System Private Band": "_static/tracks/chipra.mp3",
         };
         const NUM_SWAP_BUFFERS = 3;
-        let FM_MAX_MHZ = undefined;
         let AUDIO_SAMPLERATE = undefined;
         let FM_SAMPLERATE = undefined;
         let CHUNK_DURATION_MS = undefined;
@@ -204,7 +203,7 @@
         let nextAudioStartTime = 0;
         let currentAudioBuffer = 0;
 
-        let radioCarrierFreq = 62_500;
+        let radioCarrierFreq = 50_000;
         let radioVolume = 50_000;
 
         let FM = undefined;
@@ -212,10 +211,8 @@
             env: {
                 js_sin: Math.sin,
                 js_cos: Math.cos,
-                js_sqrt: Math.sqrt,
-                js_pow: Math.pow,
-                js_abs: Math.abs,
-                js_atan2: Math.atan2
+                js_atan2: Math.atan2,
+                js_atan: Math.atan,
             }
         };
 
@@ -252,10 +249,16 @@
             FM_buffer.fill(0);
             for (const station of stations)
             {
+                let st = performance.now();
                 station.FM_modulate(FM_buffer);
+                let ed = performance.now();
+                console.log(station.name, ed - st);
             }
             // Decode selected frequency
+            let st = performance.now();
             FM.instance.exports.FM_demod(radioCarrierFreq);
+            let ed = performance.now();
+            console.log("Demod", ed - st);
             // Increase buffer counter
             currentAudioBuffer = (currentAudioBuffer + 1) % NUM_SWAP_BUFFERS;
             // Copy buffer to webaudio
@@ -280,7 +283,7 @@
                 enqueueNextChunk();
             }
             // Schedule next check
-            setTimeout(processingLoop, SCHEDULE_AHEAD_MS / 2);
+            setTimeout(processingLoop, 50);
         }
 
         document.addEventListener("DOMContentLoaded", async function(event)
@@ -289,7 +292,6 @@
             const wasm = await (await fetch("_static/fm.wasm")).arrayBuffer();
             FM = await WebAssembly.instantiate(wasm, FM_importObject);
             // Init vars
-            FM_MAX_MHZ = FM.instance.exports.getMaxMHz();
             AUDIO_SAMPLERATE = FM.instance.exports.getAUDSamplerate();
             FM_SAMPLERATE = FM.instance.exports.getFMSamplerate();
             CHUNK_DURATION_MS = FM.instance.exports.getChunkMS();
