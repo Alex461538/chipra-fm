@@ -11,7 +11,7 @@ extern float js_atan2(float x, float y);
 const float FM_MAX_MHZ = 1.0;
 const float AUDIO_SAMPLERATE = 48000;
 const float FM_SAMPLERATE = FM_MAX_MHZ * 1e6;
-const float CHUNK_DURATION_MS = 1000.0;
+const float CHUNK_DURATION_MS = 500.0;
 const float CHUNK_DURATION_S = CHUNK_DURATION_MS / 1000.0;
 
 const int FM_buffer_length = (int)(FM_SAMPLERATE * CHUNK_DURATION_S);
@@ -131,13 +131,33 @@ extern void FM_modulate(float carrierFreq, float bandWidth)
     float freq_sens = 2 * PI * bandWidth / 4 / FM_SAMPLERATE; // Since the thing is discrete
 
     float *track = getAudioScratchBufPtr();
+
+    float cs_re = js_cos(2*PI*carrierFreq/FM_SAMPLERATE);
+    float cs_im = js_sin(2*PI*carrierFreq/FM_SAMPLERATE);
+    
+    float c_re = 1.0f, c_im = 0.0f;
+    float m_re = 1.0f, m_im = 0.0f;
+
+    float audio_step = (float)AUDIO_SAMPLERATE / FM_SAMPLERATE;
     
     for (int i = 0; i < FM_buffer_length; i++)
     {
-        float t = i * 1.0 / FM_SAMPLERATE;
-        int timeCounter = (int)(t * AUDIO_SAMPLERATE);
-        pos += track[(int)(timeCounter) % AUDIO_buffer_length];
-        FM_buffer[i] += amplitude * js_sin(carrier_freq * t + freq_sens * pos);
+        pos += track[(int)(i * audio_step)];
+        // Calculate mod delta
+        float mod_angle = freq_sens * track[(int)(i * audio_step)]; // Δ only
+        float ms_re = js_cos(mod_angle); 
+        float ms_im = js_sin(mod_angle);
+        // Spin by delta
+        float new_mre = m_re*ms_re - m_im*ms_im;
+        float new_mim = m_re*ms_im + m_im*ms_re;
+        m_re = new_mre; m_im = new_mim;
+        // Take real part
+        float total_re = c_re*m_re - c_im*m_im;
+        FM_buffer[i] += amplitude * total_re;
+        // Spin normally
+        float new_cre = c_re*cs_re - c_im*cs_im;
+        float new_cim = c_re*cs_im + c_im*cs_re;
+        c_re = new_cre; c_im = new_cim;
     }
 }
 
@@ -148,9 +168,22 @@ extern void FM_demod(float carrierFreq)
     const int AUDIO_LOWPASS = 100;
     const float OUT_MAXAMPL = 2;
 
+    float step_re = js_cos(2 * PI * carrierFreq / FM_SAMPLERATE);
+    float step_im = -js_sin(2 * PI * carrierFreq / FM_SAMPLERATE);
+
+    float osc_re = 1.0f;  // current oscillator state, starts at angle 0
+    float osc_im = 0.0f;
+
     for (int i = 0; i < FM_buffer_length; i++) {
-        I[i] = FM_buffer[i] * js_cos(2 * PI * carrierFreq * i / FM_SAMPLERATE);
-        Q[i] = -FM_buffer[i] * js_sin(2 * PI * carrierFreq * i / FM_SAMPLERATE);
+        float s = FM_buffer[i];
+
+        I[i] = s * osc_re;
+        Q[i] = s * osc_im;
+
+        float new_re = osc_re * step_re - osc_im * step_im;
+        float new_im = osc_re * step_im + osc_im * step_re;
+        osc_re = new_re;
+        osc_im = new_im;
     }
 
     lowPass(I, FM_buffer_length, IQ_LOWPASS);
