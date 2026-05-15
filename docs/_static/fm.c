@@ -10,10 +10,12 @@ extern float js_cos(float x);
 const float PI = M_PI;
 const float PI_D_4 = M_PI / 4;
 const float PI_D_2 = M_PI / 2;
+const float PI_3_4 = M_PI / 4 * 3;
+const float PI_M_2 = M_PI * 2;
 
 #define M_AUDIO_SAMPLERATE 48000
-#define M_FM_SAMPLERATE 1000000
-#define M_CHUNK_DURATION_MS 500
+#define M_FM_SAMPLERATE 500000
+#define M_CHUNK_DURATION_MS 250
 #define M_CHUNK_DURATION_S M_CHUNK_DURATION_MS/1000.0
 #define M_FM_BUFFER_LEN (M_FM_SAMPLERATE*M_CHUNK_DURATION_MS/1000)
 #define M_AUDIO_BUFFER_LEN (M_AUDIO_SAMPLERATE*M_CHUNK_DURATION_MS/1000)
@@ -162,6 +164,12 @@ extern float getAudioBufLength()
 }
 
 meta_exported
+extern void init()
+{
+    //
+}
+
+meta_exported
 extern void FM_modulate(float carrierFreq, float bandWidth)
 {
     float *track = getAudioScratchBufPtr();
@@ -181,7 +189,7 @@ extern void FM_modulate(float carrierFreq, float bandWidth)
         // Calculate audio integral
         float sample = track[(int)(i * AUD_PER_FM_SAMPLERATE)];
         pos += sample;
-        // Calculate mod delta
+        // Calculate mod delta, I should do something for this later
         float mod_angle = freq_sens * sample;
         float ms_re = js_cos(mod_angle); 
         float ms_im = js_sin(mod_angle);
@@ -243,6 +251,6 @@ extern void FM_demod(float carrierFreq)
     for (int i = 0; i < AUDIO_BUFFER_LEN; i++)
     {
         // Downsample and amplify
-        AUDIO_MHz_buffer[i] = 4 * AUDIO_MHz_buffer[ (int)(i / AUDIO_SAMPLERATE * FM_SAMPLERATE) ];
+        AUDIO_MHz_buffer[i] = 6 * AUDIO_MHz_buffer[ (int)(i / AUDIO_SAMPLERATE * FM_SAMPLERATE) ];
     }
 }
