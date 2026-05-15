@@ -11,7 +11,7 @@ extern float js_atan2(float x, float y);
 const float FM_MAX_MHZ = 1.0;
 const float AUDIO_SAMPLERATE = 48000;
 const float FM_SAMPLERATE = FM_MAX_MHZ * 1e6;
-const float CHUNK_DURATION_MS = 550.0;
+const float CHUNK_DURATION_MS = 1000.0;
 const float CHUNK_DURATION_S = CHUNK_DURATION_MS / 1000.0;
 
 const int FM_buffer_length = (int)(FM_SAMPLERATE * CHUNK_DURATION_S);
