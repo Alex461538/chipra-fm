@@ -11,7 +11,7 @@
         <img src="_static/chipra-fm.png" />
     </header>
 
-    <h1 id="title" >Chipra FM 0.5MHz</h1>
+    <h1 id="title" >Chipra FM 500K</h1>
 
     <section id="sint-info" >
         <input oninput="setCarrier(this.value)" type="range" id="freq" name="freq" step="500" min="500" max="500000">
@@ -22,16 +22,125 @@
     <p id="please-touch-me" >Presione pa prender la radio.</p>
 
     <main>
-        <p class="advice" >POR FAVOR NO USE AUDIFONOS. Además, en telefonos con chrome la experiencia es mala, otros navegadores como firefox corren perfecto.</p> 
-        
-        </br></br>
+        <p>
+            <u><span class="advice" >POR FAVOR NO USE AUDIFONOS.</span> </u> Esta página simula la experiencia completa de fingir escuchar la radio.
+            La música se modula en ondas de radio y viaja por un pequeño espectro inventado.
+            Al final una radio imaginaria y bien peye la sintoniza y decodifica en tiempo real, todo en el navegador.
+        </p>
 
-        Esta página simula la experiencia completa de fingir escuchar la radio.
-        La música se modula en ondas de radio y viaja por un pequeño espectro inventado.
-        Al final una radio imaginaria y bien peye la sintoniza y decodifica en tiempo real, todo en el navegador.
+        <h2>El proceso en detalle</h2>
+
+        <h3>Modulación:</h3>
+
+        <p>
+            Para que una estación transmita datos por el espectro tenemos que elegir primero
+            una frecuencia base (portadora), de ahí que los locutores digan
+            "Transmitiendo desde Manizales en los 91.7MHz".
+        </p>
+
+        <img src="_static/images/modulation.png" class="float-left" />
+
+        <p>
+            Luego decidir entre codificar el sonido en AM y FM
+            depende de si queremos largo alcance (AM) o alta calidad (FM).
+        </p>
+
+        <ul>
+            <li>
+                <strong>Estación AM: </strong>
+                La señal original modifica la amplitud de la portadora así:
+                <math>s(t) = sin(wt) * f(t)</math>
+            </li>
+            <li>
+                <strong>Estación FM: </strong>
+                La señal original modifica ligeramente qué tan rápido oscila la portadora:
+                <math>s(t) = sin(wt + ∫f(t)dt)</math>
+            </li>
+        </ul>
+
+        <p>
+            Cabe resaltar que mientras esta página fríe tu CPU con <strong>FM</strong>,
+            en la vida real existen circuitos especializados que realizan
+            esta traducción en tiempo real y expelen el resultado como
+            ondas de radio.
+
+            (Luz, aunque de baja frecuencia y por tanto invisible y capaz de atravesar algunos objetos)
+        </p>
+
+        <img class="img-cover-row" src="_static/images/single.png" />
+        
+        <p>
+            Al final el espectro percibido se compone de la suma
+            de todas las salidas de las estaciones, lo cual se puede ver claramente al analizar las frecuencias en el tiempo:
+        </p>
+
+        <img class="img-cover-row" src="_static/images/spectrogram-all.png" />
+
+        <h3>Demodulación:</h3>
+
+        <p>
+            Ahora bien, a la antena llegan todas las estaciones mezcladas.
+            Así que primero debemos aislar únicamente la frecuencia
+            que queremos escuchar.
+        </p>
+
+        <img class="img-cover-row" src="_static/images/osc-mult-result.png" />
+
+        <p>
+            Para ello generamos un oscilador a la frecuencia portadora de la estación elegida.
+        </p>
+        <p>
+            En realidad son dos ondas llamadas I y Q, desfasadas 90°
+            entre sí para poder recuperar mejor la señal.
+        </p>
+        <p>
+            Al multiplicarlas por separado con la señal de la antena, las frecuencias
+            cercanas a la emisora seleccionada se desplazan hacia 0Hz,
+            mientras las demás quedan desalineadas y se atenúan. 
+        </p>
+        <img class="img-cover-row" src="_static/images/lpf.png" />
+        <p>
+            Para este punto tenemos la señal FM original mas un ruido
+            de alta frecuencia. Este se quita con un <a href="https://es.wikipedia.org/wiki/Filtro_paso_bajo" >Filtro de paso bajo.</a>
+        </p>
+        <img class="img-cover-row" src="_static/images/demod.png" />
+        <p>
+            Ahora tenemos dos versiones filtradas de la señal: I(t) y Q(t).
+
+            Juntas forman un punto girando en un espacio.
+
+            La velocidad de ese giro representa directamente
+            la frecuencia instantánea de la FM.
+
+            Así que para recuperar el audio solo medimos cuánto
+            rotó la señal entre un instante y el siguiente.
+        </p>
+        <p>
+            Por último aplicamos otro filtro de paso bajo al audio final y listo.
+        </p>
     </main>
 
     <style>
+        img {
+            image-rendering:optimizeQuality;
+        }
+
+        img.float-left {
+            float: left;
+            width: 30%;
+            padding: 10px;
+            display: block;
+            margin-right: 40px;
+            margin-top: 10px;
+        }
+
+        img.img-cover-row {
+            max-width: 60%;
+            display: block;
+            margin: auto;
+            padding: 10px;
+        }
+
         .advice {
             text-align: center;
             margin: 0px;
@@ -149,11 +258,24 @@
             margin-top: 30px;
             font-size: small;
             width: 50%;
+            margin-bottom: 60px;
+        }
+
+        body {
+            overflow-y: scroll;
         }
 
         @media (max-width: 1080px) {
             main {
                 width: 70%;
+            }
+
+            img.float-left {
+                width: 40%;
+                padding: 10px;
+                display: block;
+                margin-right: 20px;
+                margin-top: 20px;
             }
         }
 
@@ -230,7 +352,7 @@
             "Cortavenas Caldas": "_static/tracks/que-pasara-los-betas.mp3",
             "Yerevani Radion": "_static/tracks/sevuk-sirunik-aghjik.mp3",
             "Milky Chocobo FM": "_static/tracks/mario-artist-talent-studio-arriba.mp3",
-            "Chipra System Private Band": "_static/tracks/chipra.mp3",
+            "Chi-Sys Private Band": "_static/tracks/chipra.mp3",
         };
         let AUDIO_SAMPLERATE = undefined;
         let FM_SAMPLERATE = undefined;
@@ -290,7 +412,7 @@
             // Decode selected frequency
             FM.instance.exports.FM_demod(radioCarrierFreq);
             ed = performance.now();
-            console.log("Demod", ed - st);
+            console.log("Mod and Demod", ed - st);
         }
 
         function processingLoop() {

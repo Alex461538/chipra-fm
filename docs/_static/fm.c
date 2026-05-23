@@ -186,8 +186,13 @@ extern void FM_modulate(float carrierFreq, float bandWidth)
 
     for (int i = 0; i < FM_BUFFER_LEN; i++)
     {
-        // Calculate audio integral
-        float sample = track[(int)(i * AUD_PER_FM_SAMPLERATE)];
+        // Calculate audio integral with a little smoothing
+        float t = i * AUD_PER_FM_SAMPLERATE;
+        float sample_0 = track[(int)t];
+        float sample_1 = i == FM_BUFFER_LEN - 1 ? sample_0 : track[(int)t + 1];
+        float factor = t - (int)t;
+        float sample = sample_0 * factor + sample_1 * (1 - factor);
+
         pos += sample;
         // Calculate mod delta, I should do something for this later
         float mod_angle = freq_sens * sample;
