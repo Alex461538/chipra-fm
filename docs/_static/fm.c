@@ -174,7 +174,7 @@ extern void FM_modulate(float carrierFreq, float bandWidth)
 {
     float *track = getAudioScratchBufPtr();
     float pos = 0.0;
-    float amplitude = 0.125;
+    float amplitude = 0.05;
     float carrier_freq = 2 * PI * carrierFreq;
     float freq_sens = 2 * PI * bandWidth / 4 / FM_SAMPLERATE; // Since the thing is discrete
     // Carrier oscilator
@@ -188,10 +188,7 @@ extern void FM_modulate(float carrierFreq, float bandWidth)
     {
         // Calculate audio integral with a little smoothing
         float t = i * AUD_PER_FM_SAMPLERATE;
-        float sample_0 = track[(int)t];
-        float sample_1 = i == FM_BUFFER_LEN - 1 ? sample_0 : track[(int)t + 1];
-        float factor = t - (int)t;
-        float sample = sample_0 * factor + sample_1 * (1 - factor);
+        float sample = track[(int)t];
 
         pos += sample;
         // Calculate mod delta, I should do something for this later

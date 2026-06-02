@@ -16,7 +16,7 @@
     <section id="sint-info" >
         <input oninput="setCarrier(this.value)" type="range" id="freq" name="freq" step="500" min="500" max="500000">
         <div id="station-bullets" ></div>
-        <div id="station-markers" ></div>
+        <div id="station-markers" >Cargando...</div>
     </section>
 
     <p id="please-touch-me" >Presione pa prender la radio.</p>
@@ -88,35 +88,40 @@
 
         <p>
             Para ello generamos un oscilador a la frecuencia portadora de la estación elegida.
-        </p>
-        <p>
-            En realidad son dos ondas llamadas I y Q, desfasadas 90°
-            entre sí para poder recuperar mejor la señal.
-        </p>
-        <p>
-            Al multiplicarlas por separado con la señal de la antena, las frecuencias
-            cercanas a la emisora seleccionada se desplazan hacia 0Hz,
-            mientras las demás quedan desalineadas y se atenúan. 
+            Le llaman oscilador complejo, pero en realidad son solo dos ondas llamadas I(t) y Q(t), desfasadas en 90°
+            entre sí, para poder recuperar mejor la señal.
+            Al multiplicarlas con la señal de la antena tendremos dos señales donde
+            las frecuencias cercanas a la emisora seleccionada se desplazan hacia 0Hz,
+            mientras que las demás se atenúan y destruyen. 
         </p>
         <img class="img-cover-row" src="_static/images/lpf.png" />
         <p>
             Para este punto tenemos la señal FM original mas un ruido
-            de alta frecuencia. Este se quita con un <a href="https://es.wikipedia.org/wiki/Filtro_paso_bajo" >Filtro de paso bajo.</a>
+            de alta frecuencia. Así que lo quitamos con nuestro <a target="_blank" href="https://es.wikipedia.org/wiki/Filtro_paso_bajo" >Filtro de paso bajo</a> de preferencia.
         </p>
         <img class="img-cover-row" src="_static/images/demod.png" />
         <p>
-            Ahora tenemos dos versiones filtradas de la señal: I(t) y Q(t).
-
-            Juntas forman un punto girando en un espacio.
-
-            La velocidad de ese giro representa directamente
-            la frecuencia instantánea de la FM.
-
-            Así que para recuperar el audio solo medimos cuánto
-            rotó la señal entre un instante y el siguiente.
+            Ahora tenemos la FM representada por las dos versiones filtradas de I(t) y Q(t).
+            Juntas forman un punto que gira en el espacio.
+            La velocidad de ese giro representa, por definición de la FM, el audio original. Así que la calculamos.
         </p>
         <p>
-            Por último aplicamos otro filtro de paso bajo al audio final y listo.
+            Por último aplicamos otro filtro de paso bajo al audio final y listo, hágase la música.
+        </p>
+
+        <h2>¿Por qué no suena tan bien?</h2>
+
+        <p>
+            Los dispositivos FM reales funcionan aproximadamente a más de 90Mhz.
+            Sin embargo, por límites de procesamiento el espectro simulado solo admite frecuencias máximas de 500Khz y las estaciones quedan apretadas, en adición a cálculos aproximados.
+            Ciertamente, una muestra del poder de los circuitos analógicos que hacen lo mismo sin sudar.
+        </p>
+
+        <h2>¿Dónde puedo ver más?</h2>
+
+        <p>
+            Encuentra el código fuente de <strong>chipra-fm</strong> y otros proyectos en mi
+            <a target="_blank" href="https://github.com/Alex461538">Github. 🐥🌙</a>
         </p>
     </main>
 
@@ -475,7 +480,7 @@
 
         document.addEventListener("click", async function(event)
         {
-            if (soundCtxStarted)
+            if (soundCtxStarted || document.getElementById("station-bullets").innerHTML == "")
             {
                 return;
             }
