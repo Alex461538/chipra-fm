@@ -6,6 +6,8 @@ Five stations broadcast simultaneously over a simulated 1 MHz spectrum. A virtua
 
 See it in [Github Pages](https://alex461538.github.io/chipra-fm/).
 
+![title](banner.png)
+
 The full pipeline happens on every chunk:
 
 - **Modulation**: each station encodes its audio into the instantaneous frequency of a carrier wave.
